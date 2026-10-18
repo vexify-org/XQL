@@ -107,7 +107,7 @@ WHERE 的判定语句直接生成在 `for` 循环体内，SELECT 的投影同理
 ## 用法
 
 ```js
-const { xql, Collection } = require('./');
+const { xql, Collection } = require('@vexify/xql');
 
 // 方式一：全局集合
 xql.load('users', rows);
