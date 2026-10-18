@@ -1,6 +1,6 @@
 {
   "name": "@vexify/xql",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "XQL — eXtend Query Language. Extends SQL over documents with the speed of hand-written JS (compiled to closures/code, no AST walking).",
   "main": "index.js",
   "files": [
@@ -11,7 +11,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "test": "node test/xql.test.js",
+    "test": "node test/xql.test.js && node test/index.test.js",
     "bench": "node bench.js"
   },
   "keywords": [
@@ -23,7 +23,8 @@
     "codegen",
     "mongodb",
     "document-database",
-    "embedded"
+    "embedded",
+    "index"
   ],
   "license": "Apache-2.0",
   "author": "Vexify",

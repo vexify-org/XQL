@@ -30,6 +30,17 @@
  *   - IS NULL / IS NOT NULL / COALESCE 显式处理 NULL
  */
 
+const { pickIndexableConjunct } = require('./index-store');
+
+/** 生成注入给生成码的候选查找函数 */
+function makeCandFinder(indexes) {
+  return function _ixcand(field, op, value) {
+    const ix = indexes.get(field);
+    if (!ix) return null;
+    return ix.candidates(op, value);
+  };
+}
+
 /** LIKE → RegExp（编译一次，运行期只 test） */
 function likeToRegExp(pat) {
   const esc = String(pat).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.');
@@ -351,8 +362,46 @@ function compileQuery(q, opts = {}) {
   const B = e.body;
 
   // 1) WHERE —— 内联进循环，零回调
+  //
+  //    有索引时走「候选 + 谓词确认」：索引只负责缩小要看的行，
+  //    最终判定仍然由完整谓词做 —— 所以索引给多给少都不会算错。
+  const cand = opts.indexes ? pickIndexableConjunct(q.where) : null;
+  let candField = null;
+  if (cand && opts.indexes.has(cand.field)) {
+    const ix = opts.indexes.get(cand.field);
+    // 索引类型要匹配操作符：等值用 hash，范围用 sorted
+    const fits = cand.op === '=' || cand.op === '!='
+      ? ix.type === 'hash' || ix.type === 'range'
+      : ix.type === 'range';
+    if (fits) candField = cand;
+  }
+
   B.push('  let _out = [];');
-  if (q.where) {
+  const allEmitters = [e];
+
+  if (candField) {
+    // 索引路径与全扫路径各编译一份谓词 —— temp 变量名不能跨分支复用
+    const eIdx = new Emitter();
+    const predIdx = eIdx.emitBool(q.where);
+    const eScan = new Emitter();
+    const predScan = eScan.emitBool(q.where);
+    allEmitters.push(eIdx, eScan);
+
+    B.push(`  const _cand = _ixcand(${JSON.stringify(candField.field)}, ${JSON.stringify(candField.op)}, ${JSON.stringify(candField.value)});`);
+    B.push('  if (_cand !== null) {');
+    B.push('    for (let _i = 0; _i < _cand.length; _i++) {');
+    B.push('      const r = rows[_cand[_i]];');
+    B.push(...eIdx.body);
+    B.push(`      if (${predIdx}) _out.push(r);`);
+    B.push('    }');
+    B.push('  } else {');
+    B.push('    for (let _i = 0; _i < rows.length; _i++) {');
+    B.push('      const r = rows[_i];');
+    B.push(...eScan.body);
+    B.push(`      if (${predScan}) _out.push(r);`);
+    B.push('    }');
+    B.push('  }');
+  } else if (q.where) {
     B.push('  for (let _i = 0; _i < rows.length; _i++) {');
     B.push('    const r = rows[_i];');
     const predVar = e.emitBool(q.where);
@@ -423,10 +472,19 @@ function compileQuery(q, opts = {}) {
   const injectVals = [];
   if (orderBy) for (let i = 0; i < orderBy.length; i++) { injectNames.push('_ok' + i); injectVals.push(orderBy[i].fn); }
 
-  // 正则 / Set 从主管道的 Emitter 里收集
-  for (const r of e.regexes) { injectNames.push(r.name); injectVals.push(r.re); }
-  for (const s of e.sets) { injectNames.push(s.name); injectVals.push(s.set); }
-  if (e._usesLike) { injectNames.push('_like'); injectVals.push(likeToRegExp); }
+  // 索引候选查找：返回候选行下标数组；返回 null 表示「这条查询用不上索引」，
+  // 由生成码里那条 else 分支走全表扫。
+  if (candField) {
+    injectNames.push('_ixcand');
+    injectVals.push(makeCandFinder(opts.indexes));
+  }
+
+  // 正则 / Set 收集 —— 索引路径与全扫路径的 emitter 也要算进来
+  for (const em of allEmitters) {
+    for (const r of em.regexes) { injectNames.push(r.name); injectVals.push(r.re); }
+    for (const s of em.sets) { injectNames.push(s.name); injectVals.push(s.set); }
+    if (em._usesLike) { injectNames.push('_like'); injectVals.push(likeToRegExp); }
+  }
 
   const src = `"use strict";\n${e.body.join('\n')}\n  return _out;`;
   // eslint-disable-next-line no-new-func

@@ -64,7 +64,14 @@ class Parser {
   }
 
   parseStage(q) {
-    if (this.isKw('WHERE')) { this.next(); if (q.where) this.err('WHERE 只能出现一次'); q.where = this.parseExpr(); return; }
+    if (this.isKw('WHERE')) {
+      this.next();
+      const e = this.parseExpr();
+      // 多个 WHERE 用 AND 串起来 —— 管道式里每一段都能加，
+      // 重复出现不该是语法错误
+      q.where = q.where ? { k: 'log', op: 'and', l: q.where, r: e } : e;
+      return;
+    }
     if (this.isKw('SELECT')) { this.next(); if (q.select) this.err('SELECT 只能出现一次'); q.select = this.parseSelectList(); return; }
     if (this.isKw('ORDER')) { this.next(); this.eatKw('BY'); if (q.orderBy) this.err('ORDER BY 只能出现一次'); q.orderBy = this.parseOrderBy(); return; }
     if (this.isKw('LIMIT')) { this.next(); if (q.limit !== null) this.err('LIMIT 只能出现一次'); q.limit = this.parseCount(); return; }

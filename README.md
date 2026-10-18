@@ -26,6 +26,35 @@ xql('SELECT name FROM users WHERE age > 18 ORDER BY name');
 xql('FROM users |> WHERE age > 18 |> SELECT name |> ORDER BY name');
 ```
 
+## 索引
+
+想让查询只看相关的行，就建索引：
+
+```js
+xql.index('users', 'id');              // 等值 → hash 索引，O(1)
+xql.index('users', 'score', 'range');  // 范围 → 有序索引，O(log n + k)
+```
+
+不给类型就按首行该字段的类型猜：数字用 range，其余用 hash。
+
+10 万行实测：
+
+| 查询 | 全表扫 | 有索引 | 加速 |
+| --- | --- | --- | --- |
+| `WHERE id = 50000` | 0.32ms | 0.003ms | **127x** |
+| `WHERE score >= 99` | 0.84ms | 0.16ms | 5.4x |
+| `WHERE age = 35` | 0.42ms | 0.20ms | 2.1x |
+
+三条保证：
+
+1. **索引只给候选，WHERE 谓词做最终判定** —— 索引给多给少都不会算错。
+2. **候选超过全表 25% 就退回全扫** —— 命中的面太大时，切片的开销比省下的扫描还贵。
+3. **有索引与无索引的结果逐字节相同**，包括行序（候选会按原行号排回去）。
+
+> 索引是快照。用 `insert()` 会自动重建；绕过它直接改 `collection.rows`
+> 时，XQL 会在下次查询时比一次长度自动补建（原地改字段值这种长度不变的改动，
+> 请手动 `reindex()`）。早期版本这里会静默丢数据。
+
 ## 扩展在哪
 
 | 能力 | 写法 | 说明 |
@@ -141,5 +170,5 @@ bench.js          对照手写循环的基准
 - `GROUP BY` / 聚合（`COUNT` / `SUM` / `AVG`）—— AST 里有节点，编译时明确报错
 - JOIN
 - 更新与删除（`UPDATE` / `DELETE`）
-- 索引（现在都是全表扫）
+- 复合索引（多字段）与部分索引（`WHERE` 带常量前缀时）
 - 持久化
