@@ -1,0 +1,41 @@
+{
+  "name": "@vexify/xql",
+  "version": "0.1.0",
+  "description": "XQL — eXtend Query Language. Extends SQL over documents with the speed of hand-written JS (compiled to closures/code, no AST walking).",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "test": "node test/xql.test.js",
+    "bench": "node bench.js"
+  },
+  "keywords": [
+    "query",
+    "sql",
+    "nosql",
+    "query-language",
+    "compiler",
+    "codegen",
+    "mongodb",
+    "document-database",
+    "embedded"
+  ],
+  "license": "Apache-2.0",
+  "author": "Vexify",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vexify-org/XQL.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vexify-org/XQL/issues"
+  },
+  "homepage": "https://github.com/vexify-org/XQL#readme",
+  "engines": {
+    "node": ">=14"
+  }
+}
