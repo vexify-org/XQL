@@ -1,11 +1,18 @@
 # XQL — eXtend Query Language
 
+[![npm](https://img.shields.io/npm/v/@vexify/xql)](https://www.npmjs.com/package/@vexify/xql)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE)
+
 **让 SQL 具有 NoSQL 的迅速。**
 
 把 SQL 接到文档上，并且保证查询速度不低于手写 JS 循环。
 
+```bash
+npm install @vexify/xql
+```
+
 ```js
-const { xql } = require('./');
+const { xql } = require('@vexify/xql');
 
 xql.load('users', [
   { name: 'ann', age: 25, profile: { level: 3 }, tags: ['a', 'b'] },
