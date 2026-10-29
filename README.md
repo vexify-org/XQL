@@ -165,6 +165,21 @@ test/xql.test.js  70 项语义测试
 bench.js          对照手写循环的基准
 ```
 
+## JSQL 适配（浅）
+
+XQL 可以直接从 JSQL 表加载数据（JSQL 的 `find` 有默认 limit=100，这里自动分页读全表）：
+
+```js
+const { xql } = require('@vexify/xql');
+const coll = await xql.fromJSQL(db, 'users', {
+  indexes: ['id', ['score', 'range']],   // 等值 hash + 范围 range
+});
+coll.query('SELECT name FROM users WHERE age > 18 ORDER BY name');
+```
+
+浅集成 = 只读加载 + 索引，不做写回。任何实现了
+`find(table, filter, opts) -> Promise<rows[]>` 的对象都能用（NativeJSQL / Database / WASM）。
+
 ## 还没做
 
 - `GROUP BY` / 聚合（`COUNT` / `SUM` / `AVG`）—— AST 里有节点，编译时明确报错

@@ -1,6 +1,6 @@
 {
   "name": "@vexify/xql",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "XQL — eXtend Query Language. Extends SQL over documents with the speed of hand-written JS (compiled to closures/code, no AST walking).",
   "main": "index.js",
   "files": [
@@ -11,7 +11,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "test": "node test/xql.test.js && node test/index.test.js",
+    "test": "node test/xql.test.js && node test/index.test.js && node test/jsql.test.js",
     "bench": "node bench.js"
   },
   "keywords": [
